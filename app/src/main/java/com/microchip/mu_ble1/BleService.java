@@ -211,19 +211,15 @@ public class BleService extends Service {
                         if (transparentReceiveCharacteristic != null) {                             //See if the characteristic was found
                             Log.i(TAG, "Found Transparent Receive characteristic");
                             final int characteristicProperties = transparentReceiveCharacteristic.getProperties(); //Get the properties of the characteristic
-                            Log.d("^^", "CCCD work00");
                             if ((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_NOTIFY)) > 0) { //See if the characteristic has the Notify property
-                                Log.d("^^", "CCCD work11");
                                 BluetoothGattDescriptor descriptor = transparentReceiveCharacteristic.getDescriptor(UUID_CCCD); //Get the descriptor that enables notification on the server
-                                Log.d("^^", "CCCD work22");
                                 if (descriptor != null) {
                                     //See if we got the descriptor
-                                    Log.d("^^", "CCCD work33");
                                     btGatt.setCharacteristicNotification(transparentReceiveCharacteristic, true); //If so then enable notification in the BluetoothGatt
                                     descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE); //Set the value of the descriptor to enable notification
                                     descriptorWriteQueue.add(descriptor);                           //Put the descriptor into the write queue
                                     if (descriptorWriteQueue.size() == 1) {                         //If there is only 1 item in the queue, then write it.  If more than 1, we handle asynchronously in the onDescriptorWrite callback below
-                                        Log.d("^^", "CCCD work44");
+
                                         btGatt.writeDescriptor(descriptor);                         //Write the descriptor
                                     } else{
                                         Log.d("^^", "CCCD work55");

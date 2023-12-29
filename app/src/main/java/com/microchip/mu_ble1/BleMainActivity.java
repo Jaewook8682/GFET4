@@ -84,6 +84,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Array;
@@ -118,11 +119,10 @@ public class BleMainActivity extends AppCompatActivity {
     private StateApp stateApp;                                                                      //State of the app
     private LineChart chart_iv, chart_res;
     private DatabaseReference databaseReference;
-    private int d_num = 1, measure_n, interval_n;
-    private float min_n;
+    private int d_num = 0, measure_n, interval_n;
 
     private Timer timer = new Timer();
-    private String[] arr_rcv = new String[300];
+    private String[] arr_rcv;
     private String[] arr_rsp;
     private Thread thread;
 
@@ -131,12 +131,6 @@ public class BleMainActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);                                                         //Call superclass (AppCompatActivity) onCreate method
         setContentView(R.layout.ble_main_screen);                                                   //Show the main screen - may be shown briefly if we immediately start the scan activity
-        Toolbar myToolbar = findViewById(R.id.toolbar);                                             //Get a reference to the Toolbar at the top of the screen
-        setSupportActionBar(myToolbar);
-
-        progressBar = findViewById(R.id.toolbar_progress_bar);                                      //Get a reference to the progress bar
-        progressBar.setIndeterminate(true);                                                         //Make the progress bar indeterminate (circular)
-        progressBar.setVisibility(ProgressBar.INVISIBLE);                                           //Hide the circular progress bar
         showAlert = new ShowAlertDialogs(this);                                             //Create the object that will show alert dialogs
         stateConnection = StateConnection.DISCONNECTED;                                             //Initial stateConnection when app starts
         stateApp = StateApp.STARTING_SERVICE;                                                       //Are going to start the BleService service
@@ -148,18 +142,10 @@ public class BleMainActivity extends AppCompatActivity {
             Intent bleServiceIntent = new Intent(this, BleService.class);             //Create Intent to start the BleService
             this.bindService(bleServiceIntent, bleServiceConnection, BIND_AUTO_CREATE);             //Create and bind the new service with bleServiceConnection object that handles service connect and disconnect
         }
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, MODE_PRIVATE);
+
         connectTimeoutHandler = new Handler(Looper.getMainLooper());                                //Create a handler for a delayed runnable that will stop the connection attempt after a timeout
         textDeviceNameAndAddress = findViewById(R.id.deviceNameAndAddressText);                     //Get a reference to the TextView that will display the device name and address
-
-        // Graph View
-        chart_iv  = findViewById(R.id.graph_iv);
-        chart_res = findViewById(R.id.graph_response);
-
-        chart_iv.getLegend().setEnabled(true);
-        chart_iv.setTouchEnabled(true);
-        chart_res.getLegend().setEnabled(true);
-        chart_res.setTouchEnabled(true);
-
 
         Button bt1_ = findViewById(R.id.bt1);
         Button bt2_ = findViewById(R.id.bt2);
@@ -262,6 +248,17 @@ public class BleMainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 String sendData = "g";
+                arr_rcv = new String[300];
+                measure_n = 1;
+
+                chart_iv.invalidate();
+                LineData data = new LineData();
+                chart_iv.setData(data);
+
+                chart_res.invalidate();
+                LineData data2 = new LineData();
+                chart_res.setData(data2);
+
                 bleService.writeToTransparentUART(sendData.getBytes());
             }
         });
@@ -290,55 +287,6 @@ public class BleMainActivity extends AppCompatActivity {
             }
         });
         // @@@ button functions @@@
-
-        EditText n_measure_ = findViewById(R.id.n_measure);
-        Button bt_start = findViewById(R.id.start);
-        bt_start.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                measure_n = Integer.valueOf(String.valueOf(n_measure_.getText()));
-                interval_n = 0;
-                for(int i = 0; i < measure_n; i++){
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            String sendData = "g";
-                            bleService.writeToTransparentUART(sendData.getBytes());
-                            interval_n ++;
-                        }
-                    }, 100);      //1000 = 1s
-                }
-            }
-        });
-
-        Button clear_ = findViewById(R.id.clear);
-        clear_.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {;
-                chart_iv.clear();
-                chart_res.clear();
-                Arrays.fill(arr_rcv, "0");
-                Arrays.fill(arr_rsp, "0");
-            }
-        });
-
-        EditText et_save_ = findViewById(R.id.et_save);
-        Button bt_save_   = findViewById(R.id.bt_save);
-        bt_save_.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                try {
-                    FileOutputStream fos = openFileOutput(String.valueOf(et_save_.getText()), MODE_PRIVATE);
-                    /*
-                    fos.write(@@그래프1@@)
-                    fos.write(@@그래프2@@) 합치자 1,2
-                    fos.close();
-                     */
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
     }
 
 
@@ -367,7 +315,7 @@ public class BleMainActivity extends AppCompatActivity {
                 }
             updateConnectionState();                                                                //Update the screen and menus
         } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+            Log.e(TAG, "11Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
     }
 
@@ -405,79 +353,6 @@ public class BleMainActivity extends AppCompatActivity {
      * Methods for handling menu creation and operation.
      */
 
-    // ----------------------------------------------------------------------------------------------------------------
-    // Options menu is different depending on whether connected or not and if we have permission to scan
-    // Show Disconnect option if we are connected or show Connect option if not connected and have a device address
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.ble_main_menu, menu);                                      //Show the menu
-        if (stateApp == StateApp.RUNNING) {                                                         //See if we have permission, service started and Bluetooth enabled
-            menu.findItem(R.id.menu_scan).setVisible(true);                                         //Scan menu item
-            if (stateConnection == StateConnection.CONNECTED) {                                     //See if we are connected
-                menu.findItem(R.id.menu_disconnect).setVisible(true);                               //Are connected so show Disconnect menu
-                menu.findItem(R.id.menu_connect).setVisible(false);                                 //and hide Connect menu
-            }
-            else {                                                                                  //Else are not connected so
-                menu.findItem(R.id.menu_disconnect).setVisible(false);                              // hide the disconnect menu
-                if (bleDeviceAddress != null) {                                                     //See if we have a device address
-                    menu.findItem(R.id.menu_connect).setVisible(true);                              // then show the connect menu
-                }
-                else {                                                                              //Else no device address so
-                    menu.findItem(R.id.menu_connect).setVisible(false);                             // hide the connect menu
-                }
-            }
-        }
-        else {
-            menu.findItem(R.id.menu_scan).setVisible(false);                                        //No permission so hide scan menu item
-            menu.findItem(R.id.menu_connect).setVisible(false);                                     //and hide Connect menu
-            menu.findItem(R.id.menu_disconnect).setVisible(false);                                  //Are not connected so hide the disconnect menu
-        }
-        return true;
-    }
-
-    // ----------------------------------------------------------------------------------------------------------------
-    // Menu item selected
-    // Scan, connect or disconnect, etc.
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        try {
-            switch (item.getItemId()) {
-                case R.id.menu_scan: {                                                              //Menu option Scan chosen
-                    startBleScanActivity();                                                         //Launch the BleScanActivity to scan for BLE devices
-                    return true;
-                }
-                case R.id.menu_connect: {                                                           //Menu option Connect chosen
-                    if (bleDeviceAddress != null) {                                                 //Check that there is a valid Bluetooth LE address
-                        stateConnection = StateConnection.CONNECTING;                               //Have an address so we are going to start connecting
-                        connectWithAddress(bleDeviceAddress);                                       //Call method to ask the BleService to connect
-                    }
-                    return true;
-                }
-                case R.id.menu_disconnect: {                                                        //Menu option Disconnect chosen
-                    stateConnection = StateConnection.DISCONNECTING;                                //StateConnection is used to determine whether disconnect event should trigger a popup to reconnect
-                    updateConnectionState();                                                        //Update the screen and menus
-                    bleService.disconnectBle();                                                     //Ask the BleService to disconnect from the Bluetooth device
-                    return true;
-                }
-                case R.id.menu_exit: {                                                              //Menu option Exit chosen
-                    showAlert.showExitMenuDialog(new Runnable() {                                   //Show the AlertDialog that has the Exit warning text
-                        @Override
-                        public void run() {                                                         //Runnable to execute if OK button pressed
-                            if (bleService != null) {                                               //Check if the service is running
-                                bleService.disconnectBle();                                         //Ask the BleService to disconnect in case there is a Bluetooth connection
-                            }
-                            onBackPressed();                                                        //Exit by going back - ultimately calls finish()
-                        }
-                    });
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
-        }
-        return super.onOptionsItemSelected(item);                                                   //No valid menu item selected so pass up to superclass method
-    }
-
     /******************************************************************************************************************
      * Callback methods for handling Service connection events and Activity result events.
      */
@@ -503,7 +378,7 @@ public class BleMainActivity extends AppCompatActivity {
                     Log.i(TAG, "Requesting user to turn on Bluetooth");
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+                Log.e(TAG, "33Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
             }
         }
 
@@ -671,110 +546,45 @@ public class BleMainActivity extends AppCompatActivity {
         try {
             Log.d("What!", "SOOO");
         } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+            Log.e(TAG, "44Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
     }
 
     private void processIncomingData(byte[] newBytes) {
         try {
-            Log.d("Dnum", String.valueOf(d_num));
-            Log.d("Length", String.valueOf(Hex.bytesToStringUppercase(newBytes).length()));
-            if(d_num == 1){
-                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                    for(int i =0;i<100;i++) {
-                        String d11 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 2));
-                        String d12 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 3));
-                        String d13 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 0));
-                        String d14 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 1));
-                        arr_rcv[i] = String.valueOf(Integer.valueOf(d11 + d12 + d13 + d14, 16));
+            int d_len = Hex.bytesToStringUppercase(newBytes).length();
+            Log.d("Requesting..", "("+String.valueOf(interval_n+1)+"/"+ String.valueOf(measure_n)+")");
+            Log.d("Received Length", String.valueOf(d_len));
 
-                        String d21 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 402));
-                        String d22 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 403));
-                        String d23 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 400));
-                        String d24 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 401));
-                        arr_rcv[i + 100] = String.valueOf(Integer.valueOf(d21 + d22 + d23 + d24, 16));
-                    }
-                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
-                    Log.d("Empty", "Empty data received");
-                } else {  // 100 data received
-                    for(int i =0;i<100;i++){
-                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
-                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
-                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                        arr_rcv[i] = String.valueOf(Integer.valueOf(d1 + d2 + d3 + d4, 16));
-                    }
+            if(d_len > 0){
+                int d_conv = d_len / 400;    // data block 개수
+                for(int i =0; i < 100*d_conv; i++){
+                    String d11 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 2));
+                    String d12 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 3));
+                    String d13 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 0));
+                    String d14 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 1));
+                    arr_rcv[i+d_num*100] = String.valueOf(Integer.valueOf(d11 + d12 + d13 + d14, 16));
                 }
-            } else if (d_num == 2) {
-                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                    for(int i =0;i<100;i++) {
-                        String d11 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 2));
-                        String d12 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 3));
-                        String d13 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 0));
-                        String d14 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 1));
-                        arr_rcv[i+100] = String.valueOf(Integer.valueOf(d11 + d12 + d13 + d14, 16));
-
-                        String d21 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 402));
-                        String d22 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 403));
-                        String d23 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 400));
-                        String d24 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 401));
-                        arr_rcv[i+200] = String.valueOf(Integer.valueOf(d21 + d22 + d23 + d24, 16));
-                    }
-                    // draw graph
+                d_num += d_conv;            // global data index(3block마다 1 데이터)
+                Log.d("D num", String.valueOf(d_num));
+                Log.d("d conv", String.valueOf(d_conv));
+                if((d_num/3) == measure_n){
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            Log.d("123@@", "DRAW!");
                             addEntry();
                         }
                     });
-
-                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
-                    Log.d("Empty", "Empty data received");
-                } else {  // 100 data received
-                    for(int i =0;i<100;i++){
-                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
-                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
-                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                        arr_rcv[i+100] = String.valueOf(Integer.valueOf(d1 + d2 + d3 + d4, 16));
-                    }
-                }
-            } else{      // dnum == 3
-                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                    Log.d("Numm ERR", "ERR ERR");
-                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
-                    Log.d("Empty", "Empty data received");
-                } else {  // 100 data received
-                    for(int i =0;i<100;i++){
-                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
-                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
-                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                        arr_rcv[i+200] = String.valueOf(Integer.valueOf(d1 + d2 + d3 + d4, 16));
-                    }
-                    // draw graph
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            addEntry();
-                        }
-                    });
+                    d_num = 0;
                 }
             }
-
-            if(newBytes.length != 0) {
-                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                    d_num++;
-                }
-                d_num++;
-            }else{
-                Log.d("zero", "zero received");
-            }
-            if(d_num >3){
-                d_num=1;
+            if(d_num%3==0){
+                Log.d("Received", "1 Data Block");
+                interval_n = d_num/3;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+            Log.e(TAG, "55Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
     }
 
@@ -793,7 +603,7 @@ public class BleMainActivity extends AppCompatActivity {
                 startActivityForResult(bleScanActivityIntent, REQ_CODE_SCAN_ACTIVITY);              //Start the BleScanActivity
             }
         } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+            Log.e(TAG, "66Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
     }
 
@@ -805,7 +615,7 @@ public class BleMainActivity extends AppCompatActivity {
             connectTimeoutHandler.postDelayed(abandonConnectionAttempt, CONNECT_TIMEOUT);           //Start a delayed runnable to time out if connection does not occur
             bleService.connectBle(address);                                                         //Ask the BleService to connect to the device
         } catch (Exception e) {
-            Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+            Log.e(TAG, "77Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
     }
 
@@ -827,7 +637,7 @@ public class BleMainActivity extends AppCompatActivity {
                     });
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
+                Log.e(TAG, "88Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
             }
         }
     };
@@ -884,109 +694,86 @@ public class BleMainActivity extends AppCompatActivity {
     }
 
     private void addEntry() {
+        Log.d("!@#", String.valueOf(arr_rcv.length));
 
-        ArrayList<Entry> val_iv  = new ArrayList<>();
-        ArrayList<Entry> val_res = new ArrayList<>();
-        LineData chrtx_iv  = new LineData();
-        LineData chrtx_res = new LineData();
+        int[] cc = {Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.GRAY, Color.CYAN, Color.BLACK, Color.MAGENTA};
 
-        min_n = Float.parseFloat(arr_rcv[0]);
-        int min_idx = 0;
+        LineData data_iv = chart_iv.getData();
+        LineData data_rs = chart_res.getData();
 
-        for(int i = 0; i < 300; i++){
-            val_iv.add(new Entry((float) i, Float.parseFloat(arr_rcv[i])));
-            if(min_n > Float.parseFloat(arr_rcv[i])){
-                min_n = Float.parseFloat(arr_rcv[i]);
-                min_idx = i;
+        if(data_iv != null) {
+            Log.d("Draw", "IT!");
+            ILineDataSet set_iv = data_iv.getDataSetByIndex(0);
+            ILineDataSet set_rs = data_rs.getDataSetByIndex(0);
+            if (set_iv == null) {
+                set_iv = createSet();
+                data_iv.addDataSet(set_iv);
             }
-        }
-        LineDataSet lineDataSet_iv = new LineDataSet(val_iv, "iv"+interval_n);
-        lineDataSet_iv.setColor(Color.rgb(Math.abs(255-interval_n*1), Math.abs(255-interval_n*5), Math.abs(255-interval_n*10)));
-
-        val_res.add(new Entry((float) interval_n,(float) min_idx));
-        LineDataSet lineDataSet_res = new LineDataSet(val_res, "response"+interval_n);
-        lineDataSet_res.setColor(Color.rgb(Math.abs(255-interval_n*1), Math.abs(255-interval_n*3), Math.abs(255-interval_n*5)));
-
-        chrtx_iv.addDataSet(lineDataSet_iv);
-        chrtx_res.addDataSet(lineDataSet_res);
-
-        chart_iv.setData(chrtx_iv);
-        chart_res.setData(chrtx_res);
-
-        chart_iv.invalidate();
-        chart_res.invalidate();
-    }
-
-    private void feedMultiple() {
-        if (thread != null)
-            thread.interrupt();
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                addEntry();
+            if (set_rs == null) {
+                set_rs = createSet();
+                data_rs.addDataSet(set_iv);
             }
-        };
-        thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    runOnUiThread(runnable);
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException ie) {
-                        ie.printStackTrace();
+            for(int i = 0; i < measure_n; i++){
+                ArrayList<Entry> val_iv  = new ArrayList<>();
+                ArrayList<Entry> val_rs  = new ArrayList<>();
+                int min_d = 0;
+                for(int j = 0; j < 300; j++){
+                    int rxd = Integer.parseInt(arr_rcv[(i*300)+j]);
+                    val_iv.add(new Entry(j, rxd));
+                    if(j==0){
+                        min_d = rxd;
+                    } else if (min_d > rxd) {
+                        min_d = rxd;
                     }
                 }
+                val_rs.add(new Entry(i, min_d));
+                //iv start
+                LineDataSet lineDataSet_iv = new LineDataSet(val_iv, "iv"+(i+1));
+                lineDataSet_iv.setColor(cc[i]);
+                lineDataSet_iv.setCircleColor(cc[i]);
+                data_iv.addDataSet(lineDataSet_iv);
+
+                chart_iv.notifyDataSetChanged();
+                chart_iv.setVisibleXRangeMaximum(300);
+                chart_iv.moveViewToX(data_iv.getEntryCount());
+                chart_iv.setData(data_iv);
+                chart_iv.invalidate();
+
+                // rs start
+                LineDataSet lineDataSet_rs = new LineDataSet(val_rs, "iv"+i);
+                lineDataSet_rs.setColor(cc[i]);
+                lineDataSet_rs.setCircleColor(cc[i]);
+                data_rs.addDataSet(lineDataSet_rs);
+
+                chart_res.notifyDataSetChanged();
+                chart_res.setVisibleXRangeMaximum(measure_n);
+                chart_res.moveViewToX(data_rs.getEntryCount());
+                chart_res.setData(data_rs);
+                chart_res.invalidate();
             }
-        });
-        thread.start();
-    }
-
-    private boolean isExternalMemoryAvailable(){
-        return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
-    }
-
-    private String checkInternalStorageAllMemory() {
-        StatFs stat= new StatFs(Environment.getDataDirectory().getPath());
-        long blockSize = stat.getBlockSizeLong();
-        long totalBlocks = stat.getBlockCountLong();
-
-        return getFileSize(blockSize * totalBlocks);
-    }
-
-    private String checkInternalAvailableMemory() {
-        StatFs stat= new StatFs(Environment.getDataDirectory().getPath());
-        long blockSize = stat.getBlockSizeLong();
-        long availableBlocks = stat.getAvailableBlocksLong();
-
-        return getFileSize(blockSize * availableBlocks);
-    }
-
-    private String checkExternalStorageAllMemory() {
-        if(isExternalMemoryAvailable() == true){
-            StatFs stat = new StatFs(Environment.getExternalStorageDirectory().getPath());
-            long blockSize = stat.getBlockSizeLong();
-            long totalBlocks = stat.getBlockCountLong();
-
-            return getFileSize(totalBlocks * blockSize);
-        } else{
-            Log.d("Storage ERR", "ERR STRAGE");
-            return null;
         }
     }
 
-    private String checkExternalAvailableMemory() {
-        if(isExternalMemoryAvailable() == true){
-            File file = Environment.getExternalStorageDirectory();
-            StatFs stat = new StatFs(file.getPath());
-            long blockSize = stat.getBlockSizeLong();
-            long availableBlocks = stat.getAvailableBlocksLong();
+    private LineDataSet createSet() {
+        LineDataSet set = new LineDataSet(null, "Dynamic Data");
+        set.setFillAlpha(110);
+        set.setFillColor(Color.parseColor("#d7e7fa"));
+        set.setColor(Color.parseColor("#800080"));
+        set.setCircleColor(Color.parseColor("#800080"));
+        set.setCircleColor(Color.parseColor("#800080"));
+        set.setValueTextColor(Color.WHITE);
+        set.setDrawValues(false);
+        set.setLineWidth(2);
+        set.setCircleRadius(6);
+        set.setDrawCircleHole(false);
+        set.setDrawCircles(false);
+        set.setValueTextSize(9f);
+        //set.setDrawFilled(true);
 
-            return getFileSize(availableBlocks * blockSize);
-        } else{
-            Log.d("Storage ERR", "ERR STRAGE");
-            return null;
-        }
+        set.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set.setHighLightColor(Color.rgb(244, 117, 117));
+
+        return set;
     }
 
     public String getFileSize(long size) {
@@ -999,7 +786,20 @@ public class BleMainActivity extends AppCompatActivity {
                 + " " + units[digitGroups];
     }
 
-    private void loading(){
-
+    public void writeFile(String fileTitle) {
+        File file = new File(Environment.getExternalStorageDirectory(), fileTitle+".txt");
+        try {
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            FileWriter writer = new FileWriter(file, false);
+            String[] str = new String[3];
+            str[0] = "1234";
+            str[1] = "567";
+            str[2] = "abcdef";
+            writer.write(Arrays.toString(str));
+            writer.close();
+        } catch (IOException e) {
+        }
     }
 }

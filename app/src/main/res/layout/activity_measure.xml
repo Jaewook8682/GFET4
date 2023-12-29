@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/Navy">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Zhang's lab App"
+            android:textColor="@color/white"
+            android:textSize="20dp"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Current Setting"
+            android:textSize="30dp"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Setting"
+            android:layout_marginLeft="30dp"
+            android:id="@+id/set_btn"/>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:text="Vds     : "
+        android:textSize="20dp"
+        android:id="@+id/vds_tv2"/>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:text="Gain    : "
+        android:textSize="20dp"
+        android:id="@+id/gain_tv2"/>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:text="Action : "
+        android:textSize="20dp"
+        android:id="@+id/action_tv2"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Measurement"/>
+        <EditText
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/n_measure"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start"
+            android:id="@+id/start" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="clear"
+            android:id="@+id/clear"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <com.github.mikephil.charting.charts.LineChart
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:id="@+id/graph_iv"/>
+        <com.github.mikephil.charting.charts.LineChart
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:id="@+id/graph_response"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="File Name : "
+                android:layout_marginLeft="50dp"/>
+            <EditText
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:id="@+id/et_save"/>
+            <Button
+                android:id="@+id/bt_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SAVE"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

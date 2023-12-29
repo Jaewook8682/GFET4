@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Strings used in the application -->
+<?xml version="1.0" encoding="utf-8"?><!-- Strings used in the application -->
 <resources>
     <string name="app_name">Zhang Lab #App1</string>
     <string name="ble_not_supported">BLE is not supported</string>

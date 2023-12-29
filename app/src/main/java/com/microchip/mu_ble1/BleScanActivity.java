@@ -50,9 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Activity for scanning and displaying available Bluetooth LE devices
- */
+
 public class BleScanActivity extends AppCompatActivity {
 	private final static String TAG = BleScanActivity.class.getSimpleName();                        //Activity name for logging messages on the ADB
 
