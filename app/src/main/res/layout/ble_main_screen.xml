@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:text="Measure"
             android:layout_marginLeft="30dp"
-            android:id="@+id/mst_btn"/>
+            android:id="@+id/msr_btn"/>
     </LinearLayout>
     <TextView
         android:layout_width="match_parent"

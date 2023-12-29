@@ -287,6 +287,14 @@ public class BleMainActivity extends AppCompatActivity {
             }
         });
         // @@@ button functions @@@
+
+        Button msr_btn_ = findViewById(R.id.msr_btn);
+        msr_btn_.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                MeasureActivity();
+            }
+        });
     }
 
 
@@ -605,6 +613,15 @@ public class BleMainActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "66Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
+    }
+
+    private void startMeasureActivity(){
+        final Intent MeasureActivityIntent = new Intent(BleMainActivity.this, MeasureActivity.class);
+        MeasureActivityIntent.putExtra("received_arr", arr_rcv);
+        MeasureActivityIntent.putExtra("respond_arr", arr_rsp);
+        MeasureActivityIntent.putExtra("measure_nn", measure_n);
+        MeasureActivityIntent.putExtra("d_nn", d_num);
+        startActivity(MeasureActivityIntent);
     }
 
     // ----------------------------------------------------------------------------------------------------------------

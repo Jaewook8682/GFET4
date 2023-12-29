@@ -2,6 +2,7 @@ package com.microchip.mu_ble1;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -20,6 +21,10 @@ public class MeasureActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_measure);
+
+        Intent msr_intent = getIntent();
+        int d_num = msr_intent.getIntExtra("d_nn");
+
         // Graph View
         LineChart chart_iv  = findViewById(R.id.graph_iv);
         chart_iv.getLegend().setEnabled(true);
